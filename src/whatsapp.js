@@ -10,6 +10,7 @@ const {
 const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const path = require('path');
+const fs = require('fs');
 
 // Auth location is configurable so a cloud host can point it at a persistent
 // volume (e.g. AUTH_DIR=/data/auth) — otherwise the session is wiped on every
@@ -34,6 +35,20 @@ const logger = pino({ level: 'silent' });
  * @returns {Promise<object>} the Baileys socket
  */
 async function connect(onReady) {
+  // Cloud bootstrap: if a base64-encoded creds blob is provided and no session
+  // exists yet on disk, materialize creds.json so we come up as an ALREADY
+  // linked device — no QR scan or pairing code needed on a headless host. The
+  // rest of the session state (app-state keys, pre-keys) re-syncs on connect.
+  const credsB64 = (process.env.WA_CREDS_B64 || '').trim();
+  if (credsB64) {
+    const credsPath = path.join(AUTH_DIR, 'creds.json');
+    if (!fs.existsSync(credsPath)) {
+      fs.mkdirSync(AUTH_DIR, { recursive: true });
+      fs.writeFileSync(credsPath, Buffer.from(credsB64, 'base64').toString('utf8'));
+      console.log('✓ Restored WhatsApp session from WA_CREDS_B64.');
+    }
+  }
+
   const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
   const { version } = await fetchLatestBaileysVersion();
 
