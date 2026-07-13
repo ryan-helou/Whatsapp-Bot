@@ -5,5 +5,18 @@
     "anchor": "2026-03-16",
     "timezone": "America/Toronto",
     "_note": "Weekly rotation adopted from AttendanceW. 'anchor' must be a Monday when members[0] is assigned. Edit members/anchor to change the rotation; reorder to change who's next."
+  },
+  {
+    "name": "sound",
+    "anchor": "2026-07-13",
+    "timezone": "America/Toronto",
+    "sequence": [
+      { "lead": "Anthony", "shadow": "Maykel" },
+      { "lead": "Daniel", "shadow": "Manweel" },
+      { "lead": "Jona", "shadow": "Maykel" },
+      { "lead": "Ryan", "shadow": "Manweel" }
+    ],
+    "members": ["Anthony", "Daniel", "Jona", "Maykel", "Manweel", "Ryan"],
+    "_note": "Sound rotation. anchor = Monday of week 1. First 4 weeks (the 'sequence') are the learning phase: the 4 experienced lead (Ryan not on week 1) while learners Maykel/Manweel shadow on alternating weeks (each shadows twice). After the sequence, all 6 rotate. 'members' is the steady cycle Ryan>Anthony>Daniel>Jona>Maykel>Manweel, listed starting at Anthony so it continues cleanly after week 4's Ryan (no back-to-back)."
   }
 ]
