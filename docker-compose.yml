@@ -1,0 +1,15 @@
+services:
+  whatsapp-scheduler:
+    build: .
+    container_name: whatsapp-scheduler
+    restart: unless-stopped
+    env_file: .env
+    # tty/stdin so you can scan the QR code on first run:
+    #   docker compose run --rm whatsapp-scheduler node bin/link.js
+    stdin_open: true
+    tty: true
+    volumes:
+      # Persist the WhatsApp session, dedupe/log state, and your Google key.
+      - ./auth:/app/auth
+      - ./data:/app/data
+      - ./credentials:/app/credentials
