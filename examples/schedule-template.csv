@@ -1,0 +1,7 @@
+Group Name,Group ID,Message,Days,Time,Timezone,Media URL,Active
+Family,PASTE_FAMILY_GROUP_ID,Good morning family ☀️,Daily,09:00,America/New_York,,yes
+Work Team,PASTE_WORK_GROUP_ID,Standup in 15 minutes 🚀,"Mon,Tue,Wed,Thu,Fri",08:45,America/New_York,,yes
+Soccer Crew,PASTE_SOCCER_GROUP_ID,Reminder: practice tonight at 7 ⚽,Wed,17:00,America/New_York,,yes
+Book Club,PASTE_BOOKCLUB_GROUP_ID,New chapter due this week 📚,Sun,10:00,America/New_York,,yes
+Attendance,PASTE_ATTENDANCE_GROUP_ID,{rotation:attendance} will be taking attendance on Saturday {next_saturday}. Please like this message to confirm 😁,Mon,12:00,America/New_York,,yes
+Attendance,PASTE_ATTENDANCE_GROUP_ID,Don't forget that today {rotation:attendance} will be taking attendance!,Sat,12:00,America/New_York,,yes
