@@ -1,10 +1,20 @@
 [
   {
     "name": "attendance",
-    "members": ["Ryan", "Jona", "Aly", "Holy", "Julia"],
-    "anchor": "2026-03-16",
+    "anchor": "2026-07-13",
     "timezone": "America/Toronto",
-    "_note": "Weekly rotation adopted from AttendanceW. 'anchor' must be a Monday when members[0] is assigned. Edit members/anchor to change the rotation; reorder to change who's next."
+    "sequence": [
+      { "lead": "Aly" },
+      { "lead": "Holy" },
+      { "lead": "Ryan" },
+      { "lead": "Jona" },
+      { "lead": "Aly" },
+      { "lead": "Holy" },
+      { "lead": "Ryan" },
+      { "lead": "Jona" }
+    ],
+    "members": ["Julia", "Ryan", "Jona", "Aly", "Holy"],
+    "_note": "Julia removed until September (away). anchor = Monday of week 0 (2026-07-13). Weeks Jul 13 - Aug 31 (the 8-week 'sequence') run a 4-person rotation Ryan/Jona/Aly/Holy with NO Julia. From Sep 7 (week 8) the full 5-person rotation resumes WITH Julia (members list). To restore the original rotation early, delete 'sequence'. Originally: members [Ryan,Jona,Aly,Holy,Julia], anchor 2026-03-16 (from AttendanceW)."
   },
   {
     "name": "sound",
