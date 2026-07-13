@@ -92,11 +92,17 @@ async function connect(onReady) {
         if (connection === 'close') {
           const statusCode = lastDisconnect?.error?.output?.statusCode;
           const loggedOut = statusCode === DisconnectReason.loggedOut;
+          const registered = !!sock.authState?.creds?.registered;
 
-          if (loggedOut) {
-            console.error(
-              '✗ Logged out. Delete the /auth folder and re-run to link again.'
-            );
+          // A "logged out" (401) is only truly fatal AFTER the device was linked.
+          // While still pairing (not yet registered), WhatsApp routinely closes
+          // the socket with a 401 between handshake steps — that is NOT a real
+          // logout. If we exited here, the host (Railway) would restart us and
+          // mint a brand-new pairing code every few seconds, so you'd never be
+          // able to enter one. Instead we stay alive, reconnect with the same
+          // persisted auth, and keep the SAME pairing code valid.
+          if (loggedOut && registered) {
+            console.error('✗ Logged out (device was unlinked). Re-link required.');
             if (!resolved) {
               resolved = true;
               reject(new Error('logged out'));
@@ -104,8 +110,12 @@ async function connect(onReady) {
             return;
           }
 
-          console.log('Connection closed, reconnecting…');
-          start(); // reconnect with the same persisted auth
+          if (!registered && PAIRING_NUMBER) {
+            console.log('Waiting for pairing-code entry… (reconnecting; the code stays the same)');
+          } else {
+            console.log('Connection closed, reconnecting…');
+          }
+          setTimeout(start, 3000); // reconnect with the same persisted auth
         }
       });
     };
