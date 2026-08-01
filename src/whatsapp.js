@@ -1,5 +1,8 @@
 // Core WhatsApp connection module (Baileys).
-// Handles: persisted auth (scan QR once), auto-reconnect, and a "ready" callback.
+// Handles: persisted auth (scan QR once), auto-reconnect with backoff, a "ready"
+// callback, and a watchdog that exits the process if we stay offline — so the
+// host (Railway/pm2/Docker) restarts us instead of leaving a live process with a
+// dead socket.
 
 const {
   default: makeWASocket,
@@ -23,6 +26,23 @@ const AUTH_DIR = process.env.AUTH_DIR || path.join(__dirname, '..', 'auth');
 // scan a QR out of the log viewer.
 const PAIRING_NUMBER = (process.env.PAIRING_NUMBER || '').replace(/[^0-9]/g, '');
 
+const numEnv = (name, fallback) => {
+  const v = Number(process.env[name]);
+  return Number.isFinite(v) && v > 0 ? v : fallback;
+};
+
+// Reconnect backoff. A fixed short retry hammers WhatsApp for hours during an
+// outage (and looks like abuse); back off instead, capped so we still recover
+// promptly once the far end is healthy again.
+const RECONNECT_BASE_MS = 3000;
+const RECONNECT_MAX_MS = numEnv('RECONNECT_MAX_SECONDS', 300) * 1000;
+
+// If we can't hold an open connection for this long, exit non-zero so the host
+// restarts the whole process with a clean socket + fresh auth bootstrap. This is
+// the backstop for the failure mode where the reconnect chain dies silently and
+// the process lingers forever with a socket that can never send.
+const OFFLINE_EXIT_MS = numEnv('OFFLINE_EXIT_MINUTES', 15) * 60 * 1000;
+
 // Silence Baileys' internal logging; we do our own concise logging.
 const logger = pino({ level: 'silent' });
 
@@ -32,9 +52,11 @@ const logger = pino({ level: 'silent' });
  * (e.g. you removed the linked device), it stops and tells you to re-link.
  *
  * @param {(sock) => void} [onReady] called every time the connection (re)opens.
+ * @param {() => void} [onLost] called whenever the connection drops, so callers
+ *        can stop using the (now dead) socket until onReady fires again.
  * @returns {Promise<object>} the Baileys socket
  */
-async function connect(onReady) {
+async function connect(onReady, onLost) {
   // Cloud bootstrap: if a base64-encoded creds blob is provided and no session
   // exists yet on disk, materialize creds.json so we come up as an ALREADY
   // linked device — no QR scan or pairing code needed on a headless host. The
@@ -56,15 +78,74 @@ async function connect(onReady) {
     let resolved = false;
     let pairingRequested = false;
 
+    // Reconnect bookkeeping.
+    let attempts = 0; // consecutive failures since the last successful open
+    let restartPending = false; // guards against two reconnect chains running
+    let generation = 0; // only the newest socket may drive the chain
+    let offlineSince = Date.now(); // null while the connection is open
+
+    // Watchdog: the whole point is that a stuck/dead connection must not be
+    // survivable. If we're offline past the threshold, take the process down.
+    const watchdog = setInterval(() => {
+      if (offlineSince === null) return;
+      const downMs = Date.now() - offlineSince;
+      if (downMs >= OFFLINE_EXIT_MS) {
+        console.error(
+          `✗ WhatsApp offline for ${Math.round(downMs / 60000)} min — exiting so the ` +
+            'host restarts with a clean session.'
+        );
+        clearInterval(watchdog);
+        process.exit(1);
+      }
+    }, 30000);
+    if (watchdog.unref) watchdog.unref();
+
+    const markOffline = () => {
+      if (offlineSince === null) offlineSince = Date.now();
+      if (onLost) {
+        try {
+          onLost();
+        } catch (_) {
+          /* never let a callback kill the reconnect chain */
+        }
+      }
+    };
+
+    const scheduleRestart = () => {
+      if (restartPending) return;
+      restartPending = true;
+      attempts += 1;
+      const backoff = Math.min(RECONNECT_BASE_MS * 2 ** (attempts - 1), RECONNECT_MAX_MS);
+      const delay = backoff + Math.floor(Math.random() * 1000);
+      console.log(`Connection closed, reconnecting in ${Math.round(delay / 1000)}s (attempt ${attempts})…`);
+      setTimeout(() => {
+        restartPending = false;
+        start();
+      }, delay);
+    };
+
     const start = () => {
-      const sock = makeWASocket({
-        version,
-        auth: state,
-        logger,
-        browser: ['WhatsApp Scheduler', 'Chrome', '1.0.0'],
-        syncFullHistory: false,
-        markOnlineOnConnect: false, // don't flip your phone to "offline"
-      });
+      generation += 1;
+      const myGeneration = generation;
+      let sock;
+
+      // If socket construction itself throws, the chain must still continue —
+      // otherwise we'd be left alive with no connection and no retry.
+      try {
+        sock = makeWASocket({
+          version,
+          auth: state,
+          logger,
+          browser: ['WhatsApp Scheduler', 'Chrome', '1.0.0'],
+          syncFullHistory: false,
+          markOnlineOnConnect: false, // don't flip your phone to "offline"
+        });
+      } catch (err) {
+        console.error('Could not open WhatsApp socket:', err.message);
+        markOffline();
+        scheduleRestart();
+        return;
+      }
 
       sock.ev.on('creds.update', saveCreds);
 
@@ -87,6 +168,10 @@ async function connect(onReady) {
       }
 
       sock.ev.on('connection.update', (update) => {
+        // Ignore stragglers from a superseded socket: they must not schedule a
+        // reconnect (two chains = two sockets fighting over the same session).
+        if (myGeneration !== generation) return;
+
         const { connection, lastDisconnect, qr } = update;
 
         // Only draw a QR when we're NOT using pairing-code login.
@@ -97,6 +182,8 @@ async function connect(onReady) {
 
         if (connection === 'open') {
           console.log('✓ Connected to WhatsApp.');
+          attempts = 0;
+          offlineSince = null;
           if (onReady) onReady(sock);
           if (!resolved) {
             resolved = true;
@@ -109,6 +196,15 @@ async function connect(onReady) {
           const loggedOut = statusCode === DisconnectReason.loggedOut;
           const registered = !!sock.authState?.creds?.registered;
 
+          markOffline();
+
+          // Drop this socket's listeners so it can't drive the chain any more.
+          try {
+            sock.ev.removeAllListeners('connection.update');
+          } catch (_) {
+            /* best effort */
+          }
+
           // A "logged out" (401) is only truly fatal AFTER the device was linked.
           // While still pairing (not yet registered), WhatsApp routinely closes
           // the socket with a 401 between handshake steps — that is NOT a real
@@ -117,20 +213,23 @@ async function connect(onReady) {
           // able to enter one. Instead we stay alive, reconnect with the same
           // persisted auth, and keep the SAME pairing code valid.
           if (loggedOut && registered) {
-            console.error('✗ Logged out (device was unlinked). Re-link required.');
+            console.error(
+              '✗ Logged out (device was unlinked). RE-LINK REQUIRED: run `npm run link`, ' +
+                'then update WA_CREDS_B64.'
+            );
             if (!resolved) {
               resolved = true;
               reject(new Error('logged out'));
+              return;
             }
+            // Already running: don't sit here as a live process that can never
+            // send. Exit (after a pause, so we don't hammer WhatsApp in a tight
+            // crash-loop) and let the host restart us.
+            setTimeout(() => process.exit(1), 60000);
             return;
           }
 
-          if (!registered && PAIRING_NUMBER) {
-            console.log('Waiting for pairing-code entry… (reconnecting; the code stays the same)');
-          } else {
-            console.log('Connection closed, reconnecting…');
-          }
-          setTimeout(start, 3000); // reconnect with the same persisted auth
+          scheduleRestart();
         }
       });
     };
