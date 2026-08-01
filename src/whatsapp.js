@@ -14,6 +14,7 @@ const qrcode = require('qrcode-terminal');
 const pino = require('pino');
 const path = require('path');
 const fs = require('fs');
+const { alert, markOutage, outageInfo, clearOutage } = require('./alert');
 
 // Auth location is configurable so a cloud host can point it at a persistent
 // volume (e.g. AUTH_DIR=/data/auth) — otherwise the session is wiped on every
@@ -42,6 +43,10 @@ const RECONNECT_MAX_MS = numEnv('RECONNECT_MAX_SECONDS', 300) * 1000;
 // the backstop for the failure mode where the reconnect chain dies silently and
 // the process lingers forever with a socket that can never send.
 const OFFLINE_EXIT_MS = numEnv('OFFLINE_EXIT_MINUTES', 15) * 60 * 1000;
+
+// Tell Ryan the connection is down BEFORE the watchdog restarts us, so a real
+// problem surfaces in minutes rather than whenever he notices missing messages.
+const ALERT_OFFLINE_MS = numEnv('ALERT_OFFLINE_MINUTES', 5) * 60 * 1000;
 
 // Silence Baileys' internal logging; we do our own concise logging.
 const logger = pino({ level: 'silent' });
@@ -86,16 +91,36 @@ async function connect(onReady, onLost) {
 
     // Watchdog: the whole point is that a stuck/dead connection must not be
     // survivable. If we're offline past the threshold, take the process down.
+    // Deliberately NOT an async callback — an await here would let the next
+    // interval fire before the exit branch ran, and we'd exit several times.
+    let exiting = false;
     const watchdog = setInterval(() => {
       if (offlineSince === null) return;
       const downMs = Date.now() - offlineSince;
+      const downMin = Math.round(downMs / 60000);
+
       if (downMs >= OFFLINE_EXIT_MS) {
+        if (exiting) return;
+        exiting = true;
+        clearInterval(watchdog);
         console.error(
-          `✗ WhatsApp offline for ${Math.round(downMs / 60000)} min — exiting so the ` +
+          `✗ WhatsApp offline for ${downMin} min — exiting so the ` +
             'host restarts with a clean session.'
         );
-        clearInterval(watchdog);
-        process.exit(1);
+        markOutage('watchdog restart');
+        // Exit whether or not the alert lands, but give it a chance to.
+        alert(
+          'wa-watchdog-exit',
+          `🔁 WhatsApp bot: offline ${downMin} min, restarting to recover.`,
+          { force: true }
+        ).finally(() => process.exit(1));
+        return;
+      }
+
+      if (downMs >= ALERT_OFFLINE_MS) {
+        markOutage('connection down');
+        // Throttled internally, so a flapping connection can't spam.
+        alert('wa-offline', `⚠️ WhatsApp bot: connection down for ${downMin} min. Scheduled messages are not sending.`);
       }
     }, 30000);
     if (watchdog.unref) watchdog.unref();
@@ -184,6 +209,17 @@ async function connect(onReady, onLost) {
           console.log('✓ Connected to WhatsApp.');
           attempts = 0;
           offlineSince = null;
+
+          // The flag is on disk, so this still fires when the recovery was a
+          // watchdog exit + host restart — a fresh process has no memory of it.
+          const prior = outageInfo();
+          if (prior) {
+            clearOutage();
+            alert('wa-recovered', `✅ WhatsApp bot: back online (was down since ${prior.at}).`, {
+              force: true,
+            });
+          }
+
           if (onReady) onReady(sock);
           if (!resolved) {
             resolved = true;
@@ -216,6 +252,16 @@ async function connect(onReady, onLost) {
             console.error(
               '✗ Logged out (device was unlinked). RE-LINK REQUIRED: run `npm run link`, ' +
                 'then update WA_CREDS_B64.'
+            );
+            // The one failure a restart CANNOT fix — it needs a human with a
+            // phone, so it must reach Ryan directly.
+            markOutage('logged out');
+            alert(
+              'wa-logged-out',
+              '🚨 WhatsApp bot: LOGGED OUT — the linked device was removed. Restarting will ' +
+                'not fix this; it needs a re-link (npm run link, then update WA_CREDS_B64). ' +
+                'No scheduled messages will send until then.',
+              { force: true }
             );
             if (!resolved) {
               resolved = true;

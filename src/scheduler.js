@@ -7,6 +7,12 @@ const { DateTime } = require('luxon');
 const { isDue, dedupeKey } = require('./schedule');
 const { sendEntry, sleep } = require('./sender');
 const { renderEntry } = require('./template');
+const { alert } = require('./alert');
+
+// Confirming each successful send is what makes an outage *visible*: the whole
+// reason the Jul-28 failure ran for three days is that a silent bot and a
+// working bot look identical. Volume is ~4/week. Set ALERT_ON_SEND=0 to mute.
+const ALERT_ON_SEND = process.env.ALERT_ON_SEND !== '0';
 
 const randInt = (min, max) => min + Math.floor(Math.random() * (max - min + 1));
 
@@ -83,6 +89,9 @@ class Scheduler {
             jid: entry.jid,
             dryRun: !!result.dryRun,
           });
+          if (ALERT_ON_SEND && !result.dryRun) {
+            alert(`sent:${key}`, `✅ Sent to ${entry.groupName}:\n\n${toSend.message}`);
+          }
         } else {
           console.error(`  ✗ giving up on ${entry.groupName} (row ${entry.rowNumber})`);
           this.store.markFailed(key, {
@@ -91,6 +100,12 @@ class Scheduler {
             jid: entry.jid,
             error: result.error,
           });
+          alert(
+            `send-failed:${key}`,
+            `❌ WhatsApp bot: FAILED to send to ${entry.groupName} (row ${entry.rowNumber}) ` +
+              `after ${result.attempts} attempts.\nError: ${result.error}`,
+            { force: true }
+          );
         }
 
         // Gap before the next send in this batch.
