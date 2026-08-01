@@ -45,15 +45,22 @@ async function main() {
   let groupsRefreshed = false;
 
   // 1. Connect to WhatsApp. onReady fires on first connect AND every reconnect,
-  //    so currentSock always points at the live socket.
-  await connect((sock) => {
-    currentSock = sock;
-    // Refresh the group directory once, shortly after the first connect.
-    if (!groupsRefreshed) {
-      groupsRefreshed = true;
-      setTimeout(() => groups.refreshFromSock(sock), 4000);
+  //    so currentSock always points at the live socket. On a drop we clear it —
+  //    the scheduler then skips its tick instead of burning retries (and the
+  //    catch-up grace window) on a socket that cannot send.
+  await connect(
+    (sock) => {
+      currentSock = sock;
+      // Refresh the group directory once, shortly after the first connect.
+      if (!groupsRefreshed) {
+        groupsRefreshed = true;
+        setTimeout(() => groups.refreshFromSock(sock), 4000);
+      }
+    },
+    () => {
+      currentSock = null;
     }
-  });
+  );
 
   // 2. Load the schedule now, then keep it fresh on an interval.
   await refreshSchedule();

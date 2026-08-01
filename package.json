@@ -9,6 +9,7 @@
     "check-sheet": "node bin/check-sheet.js",
     "rotation": "node bin/rotation.js",
     "log": "node bin/log.js",
+    "test": "node --test test/",
     "start": "node index.js"
   },
   "keywords": [],
