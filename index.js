@@ -35,7 +35,10 @@ async function refreshSchedule() {
 }
 
 async function main() {
-  console.log('WhatsApp Scheduler starting…');
+  // Log the version on boot: with `railway up` deploys there's otherwise nothing
+  // in the logs that tells you WHICH build is actually running.
+  const { version } = require('./package.json');
+  console.log(`WhatsApp Scheduler starting… (v${version})`);
   if (config.dryRun) console.log('DRY RUN mode: messages will be previewed, not sent.');
 
   const store = new Store(config.dataDir);
