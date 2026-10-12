@@ -4,29 +4,88 @@
     "anchor": "2026-07-13",
     "timezone": "America/Toronto",
     "sequence": [
-      { "lead": "Aly" },
-      { "lead": "Holy" },
-      { "lead": "Ryan" },
-      { "lead": "Jona" },
-      { "lead": "Aly" },
-      { "lead": "Holy" },
-      { "lead": "Ryan" },
-      { "lead": "Jona" }
+      {
+        "lead": "Aly"
+      },
+      {
+        "lead": "Holy"
+      },
+      {
+        "lead": "Ryan"
+      },
+      {
+        "lead": "Jona"
+      },
+      {
+        "lead": "Aly"
+      },
+      {
+        "lead": "Holy"
+      },
+      {
+        "lead": "Ryan"
+      },
+      {
+        "lead": "Jona"
+      }
     ],
-    "members": ["Julia", "Ryan", "Jona", "Aly", "Holy"],
-    "_note": "Julia removed until September (away). anchor = Monday of week 0 (2026-07-13). Weeks Jul 13 - Aug 31 (the 8-week 'sequence') run a 4-person rotation Ryan/Jona/Aly/Holy with NO Julia. From Sep 7 (week 8) the full 5-person rotation resumes WITH Julia (members list). To restore the original rotation early, delete 'sequence'. Originally: members [Ryan,Jona,Aly,Holy,Julia], anchor 2026-03-16 (from AttendanceW)."
+    "members": [
+      "Julia",
+      "Ryan",
+      "Jona",
+      "Aly",
+      "Holy"
+    ],
+    "_note": "Julia removed until September (away). anchor = Monday of week 0 (2026-07-13). Weeks Jul 13 - Aug 31 (the 8-week 'sequence') run a 4-person rotation Ryan/Jona/Aly/Holy with NO Julia. From Sep 7 (week 8) the full 5-person rotation resumes WITH Julia (members list). To restore the original rotation early, delete 'sequence'. Originally: members [Ryan,Jona,Aly,Holy,Julia], anchor 2026-03-16 (from AttendanceW).",
+    "overrides": {
+      "2026-10-12": {
+        "lead": "Ryan"
+      },
+      "2026-10-19": {
+        "lead": "Julia"
+      }
+    },
+    "_swap_note": "One-off swap 2026-10-12: Julia (attendance) and Maykel (sound) moved to the week of Oct 19; the people who were on Oct 19 (Ryan / Manweel) take Oct 12 instead. The steady cycle is untouched from Oct 26 on. Safe to delete these two override entries after 2026-10-25."
   },
   {
     "name": "sound",
     "anchor": "2026-07-13",
     "timezone": "America/Toronto",
     "sequence": [
-      { "lead": "Anthony", "shadow": "Maykel" },
-      { "lead": "Daniel", "shadow": "Manweel" },
-      { "lead": "Jona", "shadow": "Maykel" },
-      { "lead": "Ryan", "shadow": "Manweel" }
+      {
+        "lead": "Anthony",
+        "shadow": "Maykel"
+      },
+      {
+        "lead": "Daniel",
+        "shadow": "Manweel"
+      },
+      {
+        "lead": "Jona",
+        "shadow": "Maykel"
+      },
+      {
+        "lead": "Ryan",
+        "shadow": "Manweel"
+      }
     ],
-    "members": ["Anthony", "Daniel", "Jona", "Maykel", "Manweel", "Ryan"],
-    "_note": "Sound rotation. anchor = Monday of week 1. First 4 weeks (the 'sequence') are the learning phase: the 4 experienced lead (Ryan not on week 1) while learners Maykel/Manweel shadow on alternating weeks (each shadows twice). After the sequence, all 6 rotate. 'members' is the steady cycle Ryan>Anthony>Daniel>Jona>Maykel>Manweel, listed starting at Anthony so it continues cleanly after week 4's Ryan (no back-to-back)."
+    "members": [
+      "Anthony",
+      "Daniel",
+      "Jona",
+      "Maykel",
+      "Manweel",
+      "Ryan"
+    ],
+    "_note": "Sound rotation. anchor = Monday of week 1. First 4 weeks (the 'sequence') are the learning phase: the 4 experienced lead (Ryan not on week 1) while learners Maykel/Manweel shadow on alternating weeks (each shadows twice). After the sequence, all 6 rotate. 'members' is the steady cycle Ryan>Anthony>Daniel>Jona>Maykel>Manweel, listed starting at Anthony so it continues cleanly after week 4's Ryan (no back-to-back).",
+    "overrides": {
+      "2026-10-12": {
+        "lead": "Manweel"
+      },
+      "2026-10-19": {
+        "lead": "Maykel"
+      }
+    },
+    "_swap_note": "One-off swap 2026-10-12: Julia (attendance) and Maykel (sound) moved to the week of Oct 19; the people who were on Oct 19 (Ryan / Manweel) take Oct 12 instead. The steady cycle is untouched from Oct 26 on. Safe to delete these two override entries after 2026-10-25."
   }
 ]
