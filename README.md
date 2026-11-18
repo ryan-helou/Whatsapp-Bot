@@ -1,6 +1,12 @@
+<div align="center">
+
 # WhatsApp Scheduled Group Bot
 
-A bot that sends planned, repeating messages to WhatsApp group chats, using a Google Sheet as its to-do list.
+**A bot that sends planned, repeating messages to WhatsApp group chats, using a Google Sheet as its to-do list.**
+
+</div>
+
+<br>
 
 Some groups need the same reminder every week, like a morning hello, a practice reminder or "whose turn is it this week." This bot runs around the clock and sends those messages at the right time, to the right group, so nobody has to remember. You change what it sends by editing a Google Sheet, without touching any code. It connects through a regular WhatsApp account, which goes against WhatsApp's rules and carries a small risk of the account being banned. The bot spaces its messages out like a person would to keep that risk low.
 
