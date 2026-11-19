@@ -10,6 +10,7 @@
     "rotation": "node bin/rotation.js",
     "log": "node bin/log.js",
     "export-chat": "node bin/export-chat.js",
+    "import-wa": "node bin/import-wa-export.js",
     "test": "node --test test/",
     "start": "node index.js"
   },

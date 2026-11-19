@@ -190,7 +190,7 @@ function render(store, meta) {
   lines.push(`${meta.chatName.toUpperCase()} — MESSAGE LOG`);
   lines.push(rule);
   lines.push(`${pad('Exported')}${DateTime.now().setZone(TZ).toFormat('yyyy-LL-dd HH:mm ZZZZ')}`);
-  lines.push(`${pad('Requested window')}last ${meta.months} months (from ${DateTime.fromSeconds(meta.cutoffTs, { zone: TZ }).toFormat('yyyy-LL-dd')})`);
+  lines.push(`${pad('Requested window')}${meta.windowLabel || `last ${meta.months} months (from ${DateTime.fromSeconds(meta.cutoffTs, { zone: TZ }).toFormat('yyyy-LL-dd')})`}`);
   lines.push(`${pad('Actually covers')}${first ? first.toFormat('yyyy-LL-dd') : '—'} to ${last ? last.toFormat('yyyy-LL-dd') : '—'}`);
   lines.push(`${pad('Messages')}${msgs.length}`);
   lines.push(`${pad('Participants')}${sortedPeople.length}`);
