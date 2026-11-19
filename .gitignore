@@ -8,3 +8,5 @@ credentials/
 !credentials/.gitkeep
 export-session/
 exports/
+incoming/
+chat-export.zip
