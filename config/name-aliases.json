@@ -1,0 +1,9 @@
+{
+  "_comment": "Display-name fixes applied when importing/exporting a chat log. The key is exactly what WhatsApp shows (emoji included); the value is what should appear in the log. Applied to sender names AND to the text of messages, so @mentions and system lines ('X created this group') stay consistent. Keys are matched longest-first.",
+  "aliases": {
+    "tracy 💅": "Tracy",
+    "chlo money💸": "Chloe",
+    "bro🤗": "James",
+    "jules🧸": "Julia"
+  }
+}
