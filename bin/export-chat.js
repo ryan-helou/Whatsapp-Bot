@@ -157,7 +157,7 @@ function render(store, meta) {
     const day = dt.toFormat('yyyy-LL-dd');
     if (day !== currentDay) {
       currentDay = day;
-      body.push('', `## ${day} (${dt.toFormat('cccc')})`, '');
+      body.push('', `---- ${day} (${dt.toFormat('cccc')}) ----`, '');
     }
     const who = displayName(store, m, meta.selfName);
     participants.set(who, (participants.get(who) || 0) + 1);
@@ -183,29 +183,39 @@ function render(store, meta) {
   const sortedPeople = [...participants.entries()].sort((a, b) => b[1] - a[1]);
   const first = msgs[0] ? DateTime.fromSeconds(msgs[0].ts, { zone: TZ }) : null;
   const last = msgs[msgs.length - 1] ? DateTime.fromSeconds(msgs[msgs.length - 1].ts, { zone: TZ }) : null;
+  const rule = '='.repeat(72);
+  const pad = (label) => (label + ':').padEnd(19);
 
-  lines.push(`# ${meta.chatName} — message log`);
-  lines.push('');
-  lines.push(`- **Exported:** ${DateTime.now().setZone(TZ).toFormat('yyyy-LL-dd HH:mm ZZZZ')}`);
-  lines.push(`- **Requested window:** last ${meta.months} months (from ${DateTime.fromSeconds(meta.cutoffTs, { zone: TZ }).toFormat('yyyy-LL-dd')})`);
-  lines.push(`- **Actually covers:** ${first ? first.toFormat('yyyy-LL-dd') : '—'} → ${last ? last.toFormat('yyyy-LL-dd') : '—'}`);
-  lines.push(`- **Messages:** ${msgs.length}`);
-  lines.push(`- **Participants seen:** ${sortedPeople.length}`);
-  lines.push(`- **Times:** ${TZ}, 24-hour`);
+  lines.push(rule);
+  lines.push(`${meta.chatName.toUpperCase()} — MESSAGE LOG`);
+  lines.push(rule);
+  lines.push(`${pad('Exported')}${DateTime.now().setZone(TZ).toFormat('yyyy-LL-dd HH:mm ZZZZ')}`);
+  lines.push(`${pad('Requested window')}last ${meta.months} months (from ${DateTime.fromSeconds(meta.cutoffTs, { zone: TZ }).toFormat('yyyy-LL-dd')})`);
+  lines.push(`${pad('Actually covers')}${first ? first.toFormat('yyyy-LL-dd') : '—'} to ${last ? last.toFormat('yyyy-LL-dd') : '—'}`);
+  lines.push(`${pad('Messages')}${msgs.length}`);
+  lines.push(`${pad('Participants')}${sortedPeople.length}`);
+  lines.push(`${pad('Times')}${TZ}, 24-hour clock`);
   lines.push('');
   if (meta.coverageWarning) {
-    lines.push(`> ⚠️ ${meta.coverageWarning}`);
+    lines.push('INCOMPLETE — READ THIS');
+    for (const chunk of String(meta.coverageWarning).match(/.{1,68}(\s|$)/g) || []) {
+      lines.push('  ' + chunk.trim());
+    }
     lines.push('');
   }
-  lines.push('**Format.** Each day is a `## YYYY-MM-DD (Weekday)` heading. Each message is');
-  lines.push('`HH:MM  Sender: text` on one line. Any line that does NOT start with `HH:MM  `');
-  lines.push('is a continuation of the message above it (indented 4 spaces; blank lines kept).');
-  lines.push('`[image]`, `[voice note]`, `[poll]`');
-  lines.push('etc. mark non-text messages; `[re: …]` marks a reply and quotes what it replied to.');
+  lines.push('HOW TO READ THIS FILE');
+  lines.push('  A day begins with:   ---- YYYY-MM-DD (Weekday) ----');
+  lines.push('  A message is:        HH:MM  Sender: text');
+  lines.push('  Any line that does NOT begin with HH:MM is a continuation of the');
+  lines.push('  message above it (indented 4 spaces; blank lines inside a message');
+  lines.push('  are kept). Messages are in chronological order throughout.');
+  lines.push('  [image] [voice note] [poll] [document] etc. mark non-text messages.');
+  lines.push('  [re: ...] marks a reply and quotes what it was replying to.');
   lines.push('');
-  lines.push('**Who speaks here** (by message count): ' + sortedPeople.map(([n, c]) => `${n} (${c})`).join(', '));
+  lines.push('WHO SPEAKS HERE (by message count)');
+  for (const [n, c] of sortedPeople) lines.push(`  ${String(c).padStart(5)}  ${n}`);
   lines.push('');
-  lines.push('---');
+  lines.push(rule);
   lines.push(...body);
   lines.push('');
   return lines.join('\n');
@@ -222,7 +232,7 @@ async function main() {
       if (!line.trim()) continue;
       try { store.add(JSON.parse(line)); } catch (_) {}
     }
-    const out = path.join(ARGS.outDir, 'rendered.md');
+    const out = path.join(ARGS.outDir, 'rendered.txt');
     fs.writeFileSync(out, render(store, {
       chatName: ARGS.group || 'chat', months: ARGS.months, cutoffTs, selfName: 'Ryan',
     }));
@@ -239,15 +249,7 @@ async function main() {
   const { state, saveCreds } = await useMultiFileAuthState(ARGS.auth);
   const { version } = await fetchLatestBaileysVersion();
 
-  const sock = makeWASocket({
-    version,
-    auth: state,
-    logger: pino({ level: 'silent' }),
-    browser: ['Chat Exporter', 'Chrome', '1.0.0'],
-    syncFullHistory: true, // the whole point: ask for history on link
-    markOnlineOnConnect: false,
-  });
-  sock.ev.on('creds.update', saveCreds);
+  fs.mkdirSync(ARGS.outDir, { recursive: true });
 
   let store = null;
   let targetJid = ARGS.jid || null;
@@ -267,43 +269,82 @@ async function main() {
     if (added) lastArrival = Date.now();
   };
 
-  sock.ev.on('messaging-history.set', ({ messages = [], contacts = [], progress, syncType }) => {
-    for (const c of contacts) {
-      const nm = c.name || c.notify || c.verifiedName;
-      if (store) store.noteName(c.id, nm);
-      else pendingNames.push({ _contact: true, id: c.id, name: nm });
-    }
-    ingest(messages);
-    if (progress != null) process.stdout.write(`\r  history sync ${progress}%   `);
-  });
-  sock.ev.on('messages.upsert', ({ messages }) => ingest(messages));
-
-  await new Promise((resolve, reject) => {
-    sock.ev.on('connection.update', (u) => {
-      const { connection, lastDisconnect, qr } = u;
-      if (qr) {
-        log('\nScan this in WhatsApp → Settings → Linked Devices → Link a Device:\n');
-        qrcodeTerminal.generate(qr, { small: true });
-        const png = path.resolve(ARGS.outDir, 'link-qr.png');
-        QRCode.toFile(png, qr, { width: 512, margin: 2 })
-          .then(() => log(`\n(Also saved as an image you can scan: ${png})\n`))
-          .catch(() => {});
+  // Every socket we build gets the same listeners; superseded sockets are
+  // simply dropped.
+  const attach = (s) => {
+    s.ev.on('creds.update', saveCreds);
+    s.ev.on('messaging-history.set', ({ messages = [], contacts = [], progress }) => {
+      for (const c of contacts) {
+        const nm = c.name || c.notify || c.verifiedName;
+        if (store) store.noteName(c.id, nm);
+        else pendingNames.push({ _contact: true, id: c.id, name: nm });
       }
-      if (connection === 'open') resolve();
-      if (connection === 'close') {
-        const code = lastDisconnect?.error?.output?.statusCode;
-        if (code === DisconnectReason.loggedOut) {
-          reject(new Error(
-            `This session (${ARGS.auth}) is logged out — WhatsApp drops linked devices after ~14 days idle. ` +
-            `Delete the folder and re-run to get a fresh QR.`
-          ));
-        } else {
-          log(`\n(connection closed, code ${code} — reconnect by re-running)`);
-          reject(new Error('connection closed before sync finished'));
-        }
-      }
+      ingest(messages);
+      if (progress != null) process.stdout.write(`\r  history sync ${progress}%   `);
     });
-  });
+    s.ev.on('messages.upsert', ({ messages }) => ingest(messages));
+  };
+
+  // Linking takes as long as it takes to pick up a phone. WhatsApp expires each
+  // QR after ~20s and then closes the socket with a 408 — that is NOT a failure
+  // while we are still unregistered, so build a new socket and show a fresh
+  // code instead of making the user race a one-minute window.
+  const LINK_WINDOW_MS = 10 * 60 * 1000;
+  const linkDeadline = Date.now() + LINK_WINDOW_MS;
+  let qrShown = 0;
+
+  const connectOnce = () =>
+    new Promise((resolve, reject) => {
+      const s = makeWASocket({
+        version,
+        auth: state,
+        logger: pino({ level: 'silent' }),
+        browser: ['Chat Exporter', 'Chrome', '1.0.0'],
+        syncFullHistory: true, // the whole point: ask for history on link
+        markOnlineOnConnect: false,
+      });
+      attach(s);
+      s.ev.on('connection.update', (u) => {
+        const { connection, lastDisconnect, qr } = u;
+        if (qr) {
+          qrShown++;
+          log(
+            qrShown === 1
+              ? '\nScan this in WhatsApp → Settings → Linked Devices → Link a Device:\n'
+              : `\n(that code expired — here is a fresh one, #${qrShown})\n`
+          );
+          qrcodeTerminal.generate(qr, { small: true });
+          const png = path.resolve(ARGS.outDir, 'link-qr.png');
+          QRCode.toFile(png, qr, { width: 512, margin: 2 })
+            .then(() => { if (qrShown === 1) log(`\n(also saved as an image: ${png})\n`); })
+            .catch(() => {});
+        }
+        if (connection === 'open') return resolve({ sock: s });
+        if (connection === 'close') {
+          const code = lastDisconnect?.error?.output?.statusCode;
+          const registered = !!s.authState?.creds?.registered;
+          if (code === DisconnectReason.loggedOut && registered) {
+            return reject(new Error(
+              `This session (${ARGS.auth}) is logged out — WhatsApp drops linked devices after ~14 days idle. ` +
+              `Delete the folder and re-run to get a fresh QR.`
+            ));
+          }
+          if (!registered && Date.now() < linkDeadline) return resolve({ retry: true });
+          return reject(new Error(
+            registered
+              ? `connection closed (code ${code}) — re-run to resume; already-pulled messages are kept`
+              : `no QR was scanned within ${Math.round(LINK_WINDOW_MS / 60000)} minutes`
+          ));
+        }
+      });
+    });
+
+  let sock = null;
+  while (!sock) {
+    const r = await connectOnce();
+    if (r.sock) sock = r.sock;
+    else await new Promise((res) => setTimeout(res, 1500));
+  }
 
   log('✓ Connected.');
   await new Promise((r) => setTimeout(r, 2500));
@@ -399,7 +440,7 @@ async function main() {
     }
   }
 
-  const outPath = path.join(ARGS.outDir, `${slug}.md`);
+  const outPath = path.join(ARGS.outDir, `${slug}.txt`);
   fs.writeFileSync(outPath, render(store, {
     chatName, months: ARGS.months, cutoffTs, selfName, coverageWarning,
   }));

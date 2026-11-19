@@ -67,9 +67,9 @@ test('renders days, times, senders and multi-line messages readably', () => {
   });
 
   // Day headings, in order.
-  assert.ok(out.includes('## 2026-11-16 (Monday)'), 'Monday heading');
-  assert.ok(out.includes('## 2026-11-18 (Wednesday)'), 'Wednesday heading');
-  assert.ok(out.indexOf('## 2026-11-16') < out.indexOf('## 2026-11-18'), 'days in chronological order');
+  assert.ok(out.includes('---- 2026-11-16 (Monday) ----'), 'Monday heading');
+  assert.ok(out.includes('---- 2026-11-18 (Wednesday) ----'), 'Wednesday heading');
+  assert.ok(out.indexOf('---- 2026-11-16') < out.indexOf('---- 2026-11-18'), 'days in chronological order');
 
   // One message per line, "HH:MM  Sender: text".
   assert.match(out, /^19:26 {2}Robin Lee: Hey everyone quick question/m);
@@ -84,10 +84,10 @@ test('renders days, times, senders and multi-line messages readably', () => {
   assert.match(out, /^21:35 {2}Ryan: Hey everyone, here are the songs for this Sunday:/m);
 
   // Header metadata a reader needs to trust the file.
-  assert.match(out, /# English ministry \(music\) — message log/);
-  assert.match(out, /\*\*Messages:\*\* 3/);
-  assert.match(out, /\*\*Actually covers:\*\* 2026-11-16 → 2026-11-18/);
-  assert.match(out, /Sam Diaz \(1\)/);
+  assert.match(out, /^ENGLISH MINISTRY \(MUSIC\) — MESSAGE LOG$/m);
+  assert.match(out, /^Messages: +3$/m);
+  assert.match(out, /^Actually covers: +2026-11-16 to 2026-11-18$/m);
+  assert.match(out, /^ +1 {2}Sam Diaz$/m);
 });
 
 test('messages older than the window are excluded', () => {
@@ -99,7 +99,7 @@ test('messages older than the window are excluded', () => {
   });
   assert.ok(!out.includes('ancient'), 'outside the window is dropped');
   assert.ok(out.includes('recent'));
-  assert.match(out, /\*\*Messages:\*\* 1/);
+  assert.match(out, /^Messages: +1$/m);
 });
 
 test('an incomplete pull says so in the file itself', () => {
@@ -110,8 +110,9 @@ test('an incomplete pull says so in the file itself', () => {
     coverageWarning: 'WhatsApp stopped serving older messages at 2026-09-02.',
   });
   // The gap must be visible to whoever reads the file later, not just in a
-  // terminal that scrolled away.
-  assert.match(out, /⚠️ WhatsApp stopped serving older messages at 2026-09-02\./);
+  // terminal that scrolled away, and it must be impossible to skim past.
+  assert.match(out, /^INCOMPLETE — READ THIS$/m);
+  assert.match(out, /WhatsApp stopped serving older messages at 2026-09-02/);
 });
 
 test('an unknown sender degrades to a phone number, never a crash', () => {
@@ -137,4 +138,13 @@ test('no line has trailing whitespace', () => {
   const offenders = out.split('\n').filter((l) => /\s+$/.test(l));
   assert.deepStrictEqual(offenders, [], 'blank lines inside a message must not become whitespace');
   assert.match(out, /^ {4}third line after a blank$/m, 'real continuation lines stay indented');
+});
+
+test('the output is plain text, not markdown', () => {
+  const store = tmpStore();
+  store.add(msg({ id: '1', from: '1@s.whatsapp.net', name: 'A', at: ts('2026-11-18T10:00:00'), text: 'hello' }));
+  const out = render(store, { chatName: 'g', months: 6, cutoffTs: ts('2026-05-19T00:00:00'), selfName: 'Ryan' });
+  assert.ok(!/^#{1,6}\s/m.test(out), 'no markdown headings');
+  assert.ok(!/\*\*/.test(out), 'no bold markers');
+  assert.ok(!/^> /m.test(out), 'no blockquotes');
 });
