@@ -20,6 +20,7 @@ const fs = require('fs');
 const path = require('path');
 const { DateTime } = require('luxon');
 const { render, Store } = require('./export-chat.js');
+const aliases = require('../src/aliases');
 
 const LRM = '‎';
 const NBSP = '[\\s\\u202f\\u00a0]';
@@ -82,7 +83,7 @@ function parseExport(raw, chatName) {
     // A leading LRM marks a system event or an attachment, never ordinary text.
     const flagged = cur.rawText[0] ? cur.rawText[0].startsWith(LRM) : false;
     cur.attachments = attachments;
-    cur.text = tidy(text.replace(/‎/g, '')).replace(/\n{3,}/g, '\n\n');
+    cur.text = aliases.apply(tidy(text.replace(/‎/g, '')).replace(/\n{3,}/g, '\n\n'));
     cur.system = !!(flagged && !attachments.length) || cur.sender === chatName;
     if (cur.system) cur.sender = null;
     entries.push(cur);
@@ -98,7 +99,7 @@ function parseExport(raw, chatName) {
       let body = rest;
       const split = rest.indexOf(': ');
       if (split > -1) {
-        sender = tidy(rest.slice(0, split));
+        sender = aliases.apply(tidy(rest.slice(0, split)));
         body = rest.slice(split + 2);
       }
       cur = { date, time: `${h}:${mm}:${ss}`, meridiem, sender, rawText: [body] };
@@ -122,6 +123,8 @@ function parseArgs(argv) {
       case '--since': out.since = next(); break;
       case '--all': out.months = 0; break;
       case '--out': out.outDir = next(); break;
+      case '--aliases': out.aliases = next(); break;
+      case '--no-aliases': out.aliases = false; break;
     }
   }
   return out;
@@ -131,6 +134,14 @@ function main() {
   const ARGS = parseArgs(process.argv);
   if (!ARGS.file) throw new Error('Pass --file <path to _chat.txt>');
   const chatName = ARGS.name || path.basename(path.dirname(path.resolve(ARGS.file)));
+
+  if (ARGS.aliases !== false) {
+    aliases.load(ARGS.aliases || path.join(__dirname, '..', 'config', 'name-aliases.json'));
+    if (aliases.count()) {
+      console.log(`Applying ${aliases.count()} name alias(es): ` +
+        aliases.list().map((a) => `${a.from} → ${a.to}`).join(', '));
+    }
+  }
 
   const raw = fs.readFileSync(ARGS.file, 'utf8');
   const entries = parseExport(raw, chatName);
