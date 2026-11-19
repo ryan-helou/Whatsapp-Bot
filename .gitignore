@@ -6,3 +6,5 @@ railway-session/
 data/
 credentials/
 !credentials/.gitkeep
+export-session/
+exports/
