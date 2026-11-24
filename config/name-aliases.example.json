@@ -1,0 +1,7 @@
+{
+  "_comment": "Display-name fixes. People often set playful WhatsApp names; this maps them to how they should read in an exported log. The key is exactly what WhatsApp shows (emoji included). Applied to sender names AND message text, so @mentions and system lines stay consistent. Longest key wins. Copy to name-aliases.json.",
+  "aliases": {
+    "alex the great🔥": "Alex",
+    "bee🐝": "Blake"
+  }
+}

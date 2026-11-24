@@ -103,38 +103,58 @@ test('an unparseable override date is ignored, not fatal', () => {
 });
 
 // ---------------------------------------------------------------------------
-// The production config — locks in the swap Ryan asked for on 2026-10-12.
+// The shipped example config — this is what someone who clones the repo gets,
+// so it has to actually work.
 // ---------------------------------------------------------------------------
-test('production config: Erin and Noor are moved to the week of Oct 19', () => {
-  rotations.load(path.join(__dirname, '..', 'config', 'rotations.json'));
+test('example config: the rotation cycles and the sample override lands', () => {
+  rotations.load(path.join(__dirname, '..', 'config', 'rotations.example.json'));
 
-  // This week: the people who were on Oct 19 cover instead.
-  assert.strictEqual(rotations.currentMember('attendance', at('2026-10-12')), 'Ryan');
-  assert.strictEqual(rotations.currentMember('sound', at('2026-10-12')), 'Sky');
+  // anchor is 2026-01-05, a Monday, and week 0 is the first member.
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-01-05')), 'Alex');
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-01-12')), 'Blake');
+  // ...and it wraps after the last member.
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-02-09')), 'Alex');
 
-  // Next week: the two who were moved.
-  assert.strictEqual(rotations.currentMember('attendance', at('2026-10-19')), 'Erin');
-  assert.strictEqual(rotations.currentMember('sound', at('2026-10-19')), 'Noor');
+  // The documented example overrides swap two weeks: Drew and Erin trade.
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-02-23')), 'Casey', 'week before the swap');
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-03-02')), 'Erin', 'would be Drew');
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-03-09')), 'Drew', 'would be Erin');
+  assert.strictEqual(rotations.currentMember('attendance', at('2026-03-16')), 'Alex', 'normal cycle resumes');
 
-  // Saturday of this week resolves the same as its Monday — the day-of reminder
-  // must agree with the Monday announcement.
-  assert.strictEqual(rotations.currentMember('attendance', at('2026-10-17')), 'Ryan');
-  assert.strictEqual(rotations.currentMember('sound', at('2026-10-17')), 'Sky');
-
-  // And the steady cycle resumes untouched afterwards.
-  assert.strictEqual(rotations.currentMember('attendance', at('2026-10-26')), 'Blake');
-  assert.strictEqual(rotations.currentMember('sound', at('2026-10-26')), 'Ryan');
-  assert.strictEqual(rotations.currentMember('attendance', at('2026-11-02')), 'Casey');
-  assert.strictEqual(rotations.currentMember('sound', at('2026-11-02')), 'Alex');
+  // The sound rotation opens with a shadowing phase, then falls back to members.
+  assert.strictEqual(rotations.currentMember('sound', at('2026-01-05')), 'Alex (with Noor shadowing)');
+  assert.strictEqual(rotations.currentMember('sound', at('2026-02-02')), 'Alex', 'sequence used up, plain cycle resumes');
 });
 
-test('production config: nobody is scheduled two weeks running', () => {
-  rotations.load(path.join(__dirname, '..', 'config', 'rotations.json'));
+test('example config: nobody is scheduled two weeks running', () => {
+  rotations.load(path.join(__dirname, '..', 'config', 'rotations.example.json'));
   for (const name of ['attendance', 'sound']) {
     let prev = null;
-    for (let w = 0; w < 10; w++) {
-      const who = rotations.currentMember(name, at('2026-10-12').plus({ weeks: w }));
-      assert.notStrictEqual(who, prev, `${name}: ${who} is on back-to-back weeks from week ${w - 1}`);
+    for (let w = 0; w < 12; w++) {
+      const who = rotations.currentMember(name, at('2026-01-05').plus({ weeks: w }));
+      assert.notStrictEqual(who, prev, `${name}: ${who} lands on back-to-back weeks at week ${w}`);
+      prev = who;
+    }
+  }
+});
+
+// A real config/rotations.json is deliberately untracked (it names actual
+// people), so a fresh clone skips this. It still guards the live file locally.
+test('local rotations.json, when present, is valid and never doubles up', (t) => {
+  const file = path.join(__dirname, '..', 'config', 'rotations.json');
+  if (!fs.existsSync(file)) {
+    t.skip('no local config/rotations.json — nothing to check');
+    return;
+  }
+  rotations.load(file);
+  const defs = rotations.list();
+  assert.ok(defs.length > 0, 'a local config should define at least one rotation');
+  for (const def of defs) {
+    let prev = null;
+    for (let w = 0; w < 12; w++) {
+      const who = rotations.currentMember(def.name, at('2026-01-05').plus({ weeks: w }));
+      assert.ok(who, `${def.name} should resolve someone for every week`);
+      assert.notStrictEqual(who, prev, `${def.name}: ${who} lands on back-to-back weeks`);
       prev = who;
     }
   }

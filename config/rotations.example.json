@@ -1,0 +1,56 @@
+[
+  {
+    "name": "attendance",
+    "anchor": "2026-01-05",
+    "timezone": "America/Toronto",
+    "members": [
+      "Alex",
+      "Blake",
+      "Casey",
+      "Drew",
+      "Erin"
+    ],
+    "_note": "A plain weekly rotation. 'anchor' is any Monday; week 0 is Alex, week 1 Blake, and so on, wrapping forever. Copy this to rotations.json and put your own names in.",
+    "overrides": {
+      "2026-03-02": {
+        "lead": "Erin"
+      },
+      "2026-03-09": {
+        "lead": "Drew"
+      }
+    },
+    "_overrides_note": "One-off changes for a single week, e.g. someone is away. The key is any date inside the week to change; it beats the normal cycle. A value may be a plain name or { lead, shadow }. The pair here shows the usual case: Drew and Erin swap weeks, so every week still has someone and nobody lands twice running. Delete entries once the week has passed."
+  },
+  {
+    "name": "sound",
+    "anchor": "2026-01-05",
+    "timezone": "America/Toronto",
+    "sequence": [
+      {
+        "lead": "Alex",
+        "shadow": "Noor"
+      },
+      {
+        "lead": "Blake",
+        "shadow": "Sky"
+      },
+      {
+        "lead": "Casey",
+        "shadow": "Noor"
+      },
+      {
+        "lead": "Drew",
+        "shadow": "Sky"
+      }
+    ],
+    "members": [
+      "Alex",
+      "Blake",
+      "Casey",
+      "Drew",
+      "Noor",
+      "Sky"
+    ],
+    "_note": "'sequence' is an optional opening run of weeks, useful for a training phase: experienced people lead while newcomers shadow. Once it is used up, the rotation falls back to cycling through 'members'."
+  }
+]

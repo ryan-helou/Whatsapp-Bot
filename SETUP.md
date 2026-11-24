@@ -202,12 +202,22 @@ Messages can contain **placeholders** that fill in when sent:
 - `{next_saturday}` → the upcoming Saturday (e.g. "March 21")
 - `{today}` → today's date
 
-The rotation is defined in [config/rotations.json](config/rotations.json) (already
-pre-filled with `attendance` = Ryan → Blake → Casey → Drew → Erin, anchored to the
-Monday of 2026-03-16). Edit that file to change members or order. Preview anytime:
+Rotations live in `config/rotations.json`. That file isn't in the repo, because
+it names real people — copy the example and put your own names in:
+```
+cp config/rotations.example.json config/rotations.json
+```
+The example shows both kinds: a plain weekly cycle, and a "sequence" opening run
+where experienced people lead while newcomers shadow. It also shows `overrides`,
+for the week someone is away — give the two weeks each other's name and they
+swap, so every week still has someone. Preview the result anytime:
 ```
 npm run rotation
 ```
+
+The same applies to `config/name-aliases.json`, which tidies up playful WhatsApp
+display names when exporting a chat log (`cp config/name-aliases.example.json
+config/name-aliases.json`).
 
 **To recreate AttendanceW,** add two rows to your Google Sheet for the attendance
 group (paste its Group ID from `npm run list-groups`):

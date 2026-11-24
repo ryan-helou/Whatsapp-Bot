@@ -10,3 +10,16 @@ export-session/
 exports/
 incoming/
 chat-export.zip
+
+# added for GitHub publishing
+dist/
+build/
+.next/
+.env.*
+!.env.example
+.DS_Store
+.claude/
+CLAUDE.md
+AGENTS.md
+config/rotations.json
+config/name-aliases.json
