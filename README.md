@@ -4,7 +4,7 @@
 
 **A bot that sends planned, repeating messages to WhatsApp group chats, using a Google Sheet as its to-do list.**
 
-<!-- facts --><img alt="Schedule in: a Google Sheet" src="https://img.shields.io/badge/Schedule_in-a_Google_Sheet-24292f?style=for-the-badge"> <img alt="Checks: every minute" src="https://img.shields.io/badge/Checks-every_minute-24292f?style=for-the-badge"> <img alt="Control from: Telegram, optional" src="https://img.shields.io/badge/Control_from-Telegram,_optional-24292f?style=for-the-badge">
+<!-- facts --><img alt="Schedule in: a Google Sheet" src="https://img.shields.io/badge/Schedule_in-a_Google_Sheet-24292f?style=for-the-badge"> <img alt="Checks: every minute" src="https://img.shields.io/badge/Checks-every_minute-24292f?style=for-the-badge"> <img alt="Control from: Telegram" src="https://img.shields.io/badge/Control_from-Telegram-24292f?style=for-the-badge">
 
 </div>
 
