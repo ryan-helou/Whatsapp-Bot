@@ -19,3 +19,4 @@ Some groups need the same reminder every week, like a morning hello, a practice 
 - Use automatic fill-ins, such as whose turn it is in a weekly rotation or the date of the coming Saturday.
 - Optionally manage the schedule by texting a Telegram bot in plain English ("add a 9am good-morning to the family group", "send the cleanup message now"). An AI turns your message into the change and asks before doing anything destructive.
 - Get an optional daily summary of what went out, and an alert if something failed.
+- Save a whole group chat to a plain text file: every message, who sent it and when, grouped by day and readable straight through. Playful display names can be mapped to real ones so the log makes sense to someone who wasn't there.
